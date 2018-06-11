@@ -175,6 +175,24 @@ namespace Spheres_ray_casting
             float Ig = I.G * s.material.ka.g + s.material.kd.g * I.G * Math.Max(0, Dot(p, l)) + s.material.ks.g * I.G * (float)Math.Pow(Math.Max(0, Dot(p, l)), s.material.m);
             float Ib = I.B * s.material.ka.b + s.material.kd.b * I.B * Math.Max(0, Dot(p, l)) + s.material.ks.b * I.B * (float)Math.Pow(Math.Max(0, Dot(p, l)), s.material.m);
 
+            if (Ir > 255) Ir = 255;
+            else
+            {
+                if (Ir < 0) Ir = 0;
+            }
+
+            if (Ig > 255) Ig = 255;
+            else
+            {
+                if (Ig < 0) Ig = 0;
+            }
+
+            if (Ib > 255) Ib = 255;
+            else
+            {
+                if (Ib < 0) Ig = 0;
+            }
+
             Color c = Color.FromArgb((int)Ir, (int)Ig, (int)Ib);
             return c;
         }
@@ -182,6 +200,7 @@ namespace Spheres_ray_casting
         public void RayCasting()
         {
             Sphere sphere = new Sphere(new Vector3(40, 0, -100, 1), 100, new Material(new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), 0.5f));
+            DirectionalLight light = new DirectionalLight(new Vector3(0, -100, -1, 0), Color.White, 10);
 
             float Cx = (bmp.Width - 1) / 2;
             float Cy = (bmp.Height - 1) / 2;
@@ -191,7 +210,9 @@ namespace Spheres_ray_casting
             Vector3 Pprim = new Vector3(0,0,0,1);
             Vector3 p = MatrixVec(M, Pprim);
 
-            float d = 1; //(bmp.Width / 2 * (1f / (float)Math.Tan(0.785f / 2)));
+            float angle = 90;
+            float radians = angle * (float)(Math.PI / 180);
+            float d = (bmp.Width / 2 * (1f / (float)Math.Tan(radians / 2)));
 
             for (float y = -Cy; y <= Cy; y++)
             {
@@ -206,7 +227,7 @@ namespace Spheres_ray_casting
                     if (n == null) break;
 
                     //bmp.SetPixel((int)(n.x + Cx), (int)(n.y + Cy), Color.Magenta);
-                    Color c = PointColor(sphere, new DirectionalLight(new Vector3(0,-1, 0, 0), Color.White, 100), cPos, n);
+                    Color c = PointColor(sphere, light, cPos, n);
                     bmp.SetPixel((int)(x + Cx), (int)(y + Cy), c);
                 }
             }
