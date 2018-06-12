@@ -84,7 +84,7 @@ namespace Spheres_ray_casting
 
         public double check(double t1, double t2)
         {
-            if ((t1.Equals(double.NaN) && t2.Equals(double.NaN)) && t1 < 0 && t2 < 0) return double.NaN;
+            if ((t1.Equals(double.NaN) && t2.Equals(double.NaN)) || (t1 < 0 && t2 < 0)) return double.NaN;
             else
             {
                 if (t1.Equals(double.NaN) || t1 < 0) return t2;
@@ -143,7 +143,7 @@ namespace Spheres_ray_casting
             return Matrix;
         }
 
-        public Vector3 RayConstruction(Sphere sphere, Vector3 p, Vector3 v)
+        public Vector3[] RayConstruction(Sphere sphere, Vector3 p, Vector3 v)
         {
             float b = 2 * Dot(v, Minus(p, sphere.ps));
             float c = (VecLenght(Minus(p, sphere.ps)) * VecLenght(Minus(p, sphere.ps))) - (sphere.r * sphere.r);
@@ -161,19 +161,22 @@ namespace Spheres_ray_casting
             pt.w = p.w + (float)t * v.w;
 
             Vector3 n = Div(Minus(pt, sphere.ps), VecLenght(Minus(pt, sphere.ps)));
-            return n;
+
+            Vector3[] npt = {n, pt}; 
+
+            return npt;
         }
 
-        public Color PointColor(Sphere s, DirectionalLight light, Vector3 pc, Vector3 p)
+        public Color PointColor(Sphere s, DirectionalLight light, Vector3 pc, Vector3 n, Vector3 pt)
         {
-            Vector3 v = Div(Minus(pc, p), VecLenght(Minus(pc, p)));
+            Vector3 v = Div(Minus(pc, pt), VecLenght(Minus(pc, pt)));
             Vector3 l = Multip(light.d, -1);
-            Vector3 r = Minus(Multip(p, 2 * Dot(p, l)), l);
+            Vector3 r = Minus(Multip(n, 2 * Dot(n, l)), l);
             Color I = light.Ip;
 
-            float Ir = I.R * s.material.ka.r + s.material.kd.r * I.R * Math.Max(0,Dot(p, l)) + s.material.ks.r * I.R * (float)Math.Pow(Math.Max(0, Dot(p, l)), s.material.m);
-            float Ig = I.G * s.material.ka.g + s.material.kd.g * I.G * Math.Max(0, Dot(p, l)) + s.material.ks.g * I.G * (float)Math.Pow(Math.Max(0, Dot(p, l)), s.material.m);
-            float Ib = I.B * s.material.ka.b + s.material.kd.b * I.B * Math.Max(0, Dot(p, l)) + s.material.ks.b * I.B * (float)Math.Pow(Math.Max(0, Dot(p, l)), s.material.m);
+            float Ir = I.R * s.material.ka.r + s.material.kd.r * I.R * Math.Max(0, Dot(n, l)) + s.material.ks.r * I.R * (float)Math.Pow(Math.Max(0, Dot(v, l)), s.material.m);
+            float Ig = I.G * s.material.ka.g + s.material.kd.g * I.G * Math.Max(0, Dot(n, l)) + s.material.ks.g * I.G * (float)Math.Pow(Math.Max(0, Dot(v, l)), s.material.m);
+            float Ib = I.B * s.material.ka.b + s.material.kd.b * I.B * Math.Max(0, Dot(n, l)) + s.material.ks.b * I.B * (float)Math.Pow(Math.Max(0, Dot(v, l)), s.material.m);
 
             if (Ir > 255) Ir = 255;
             else
@@ -199,13 +202,13 @@ namespace Spheres_ray_casting
 
         public void RayCasting()
         {
-            Sphere sphere = new Sphere(new Vector3(40, 0, -100, 1), 100, new Material(new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), 0.5f));
-            DirectionalLight light = new DirectionalLight(new Vector3(0, -100, -1, 0), Color.White, 10);
+            Sphere sphere = new Sphere(new Vector3(0, 0, -100, 1), 10, new Material(new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), new MaterialCoeff(0.5f, 0.5f, 0.5f), 50));
+
+            Vector3 l = new Vector3(0, -100, -1, 0);
+            DirectionalLight light = new DirectionalLight(Div(l, VecLenght(l)), Color.White, 10);
 
             float Cx = (bmp.Width - 1) / 2;
             float Cy = (bmp.Height - 1) / 2;
-
-            grp.DrawEllipse(new Pen(Color.White), Cx + sphere.ps.x - sphere.r, Cy + sphere.ps.y - sphere.r, sphere.r*2, sphere.r * 2);
 
             Vector3 Pprim = new Vector3(0,0,0,1);
             Vector3 p = MatrixVec(M, Pprim);
@@ -214,21 +217,20 @@ namespace Spheres_ray_casting
             float radians = angle * (float)(Math.PI / 180);
             float d = (bmp.Width / 2 * (1f / (float)Math.Tan(radians / 2)));
 
-            for (float y = -Cy; y <= Cy; y++)
+            for (float y = 0; y < bmp.Height; y++)
             {
-                for (float x = -Cx; x <= Cx; x++)
+                for (float x = 0; x < bmp.Width; x++)
                 {
-                    Vector3 q = new Vector3(x + Cx, -y + Cy, -d, 1);
+                    Vector3 q = new Vector3(x - Cx, -y + Cy, -d, 1);
                     Vector3 Vprim = Div(Minus(q, Pprim), VecLenght(Minus(q, Pprim)));
                     Vector3 v = MatrixVec(M, Vprim);
 
-                    Vector3 n = RayConstruction(sphere, p, v);
+                    Vector3[] npt = RayConstruction(sphere, p, v);
 
-                    if (n == null) break;
+                    if (npt == null) continue;
 
-                    //bmp.SetPixel((int)(n.x + Cx), (int)(n.y + Cy), Color.Magenta);
-                    Color c = PointColor(sphere, light, cPos, n);
-                    bmp.SetPixel((int)(x + Cx), (int)(y + Cy), c);
+                    Color c = PointColor(sphere, light, cPos, npt[0], npt[1]);
+                    bmp.SetPixel((int)(x), (int)(y), c);
                 }
             }
         }
